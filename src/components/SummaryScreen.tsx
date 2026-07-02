@@ -1,4 +1,4 @@
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, MessageCircleMore } from "lucide-react";
 import { useState } from "react";
 
 export function SummaryScreen(props: { mensaje: string }) {
@@ -28,14 +28,22 @@ export function SummaryScreen(props: { mensaje: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="ce-card">
-        <p className="ce-label mb-2">Texto para el cliente</p>
-        <pre className="whitespace-pre-wrap break-words text-sm text-slate-100">{props.mensaje}</pre>
+      <div className="flex items-center gap-2 px-1">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ce-success-soft)] text-[var(--ce-success)]">
+          <MessageCircleMore className="h-4 w-4" />
+        </span>
+        <p className="ce-eyebrow">Texto listo para el cliente</p>
       </div>
+
+      <div className="ce-card">
+        <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-[var(--ce-text)]">{props.mensaje}</pre>
+      </div>
+
       <button type="button" className="ce-btn ce-btn-primary flex w-full items-center justify-center gap-2" onClick={copyText}>
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied ? "Texto copiado" : "Copiar texto"}
       </button>
+      <p className="px-1 text-center text-xs text-[var(--ce-text-faint)]">Pégalo en WhatsApp o SMS para enviárselo al cliente.</p>
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CapturesList } from "./components/CapturesList";
 import { ClientForm } from "./components/ClientForm";
 import { DocumentCapture } from "./components/DocumentCapture";
 import { PackageSelector } from "./components/PackageSelector";
 import { SummaryScreen } from "./components/SummaryScreen";
+import { WizardSteps } from "./components/WizardSteps";
 import { CARGO_INSTALACION_TV, IzziLinea, PLANES_TV, planesPorLinea } from "./data/izziCatalog";
 import type { ParsedIdFields } from "./lib/idParsers";
 import { buildClientMessage } from "./lib/messageTemplate";
@@ -12,11 +13,12 @@ import { CapturedDocument, ClientDraft, deleteDraft, emptyDraft, listDrafts, loa
 
 type Step = "lista" | "documentos" | "cliente" | "paquete" | "resumen";
 
+const WIZARD_STEPS: Exclude<Step, "lista">[] = ["documentos", "cliente", "paquete", "resumen"];
 const STEP_LABELS: Record<Exclude<Step, "lista">, string> = {
-  documentos: "1. Documentos",
-  cliente: "2. Datos del cliente",
-  paquete: "3. Paquete izzi",
-  resumen: "4. Resumen",
+  documentos: "Documentos",
+  cliente: "Cliente",
+  paquete: "Paquete",
+  resumen: "Resumen",
 };
 
 export default function App() {
@@ -119,47 +121,76 @@ export default function App() {
   }
 
   const canAdvance = step === "documentos" || step === "cliente" || (step === "paquete" && Boolean(draft?.planSeleccionadoId));
+  const wizardIndex = step === "lista" ? -1 : WIZARD_STEPS.indexOf(step);
 
   return (
-    <div className="mx-auto min-h-screen max-w-md px-4 py-6">
-      <header className="mb-4">
-        <h1 className="text-lg font-bold text-slate-100">Captura Express</h1>
-        {step !== "lista" && <p className="text-xs text-slate-500">{STEP_LABELS[step]}</p>}
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col">
+      <header className="sticky top-0 z-10 border-b border-[var(--ce-border)] bg-[var(--ce-bg)]/85 px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ce-primary-soft)] text-[var(--ce-primary)]">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <div>
+            <h1 className="ce-title leading-none">Captura Express</h1>
+            {step !== "lista" && <p className="ce-subtitle mt-0.5">Paso {wizardIndex + 1} de {WIZARD_STEPS.length}</p>}
+          </div>
+        </div>
+        {step !== "lista" && (
+          <div className="mt-3">
+            <WizardSteps labels={WIZARD_STEPS.map((s) => STEP_LABELS[s])} currentIndex={wizardIndex} />
+          </div>
+        )}
       </header>
 
-      {step === "lista" && <CapturesList drafts={drafts} onOpen={openCapture} onDelete={removeCapture} onNew={startNewCapture} />}
+      <main className="flex-1 px-4 py-4 pb-28">
+        {step === "lista" && <CapturesList drafts={drafts} onOpen={openCapture} onDelete={removeCapture} onNew={startNewCapture} />}
 
-      {step === "documentos" && draft && (
-        <DocumentCapture documentos={draft.documentos} onDocumentCaptured={handleDocumentCaptured} onFieldsExtracted={handleFieldsExtracted} />
-      )}
+        {step === "documentos" && draft && (
+          <DocumentCapture documentos={draft.documentos} onDocumentCaptured={handleDocumentCaptured} onFieldsExtracted={handleFieldsExtracted} />
+        )}
 
-      {step === "cliente" && draft && <ClientForm draft={draft} onChange={patchDraft} />}
+        {step === "cliente" && draft && <ClientForm draft={draft} onChange={patchDraft} />}
 
-      {step === "paquete" && draft && (
-        <PackageSelector
-          linea={linea}
-          planId={draft.planSeleccionadoId}
-          addonsSeleccionados={draft.addonsSeleccionados}
-          onLineaChange={setLinea}
-          onPlanChange={(planSeleccionadoId) => patchDraft({ planSeleccionadoId })}
-          onAddonsChange={(addonsSeleccionados) => patchDraft({ addonsSeleccionados })}
-        />
-      )}
+        {step === "paquete" && draft && (
+          <PackageSelector
+            linea={linea}
+            planId={draft.planSeleccionadoId}
+            addonsSeleccionados={draft.addonsSeleccionados}
+            onLineaChange={setLinea}
+            onPlanChange={(planSeleccionadoId) => patchDraft({ planSeleccionadoId })}
+            onAddonsChange={(addonsSeleccionados) => patchDraft({ addonsSeleccionados })}
+          />
+        )}
 
-      {step === "resumen" && draft && <SummaryScreen mensaje={draft.mensajeGenerado} />}
+        {step === "resumen" && draft && <SummaryScreen mensaje={draft.mensajeGenerado} />}
+      </main>
 
       {step !== "lista" && (
-        <div className="mt-5 flex gap-2">
-          <button type="button" className="ce-btn ce-btn-secondary flex flex-1 items-center justify-center gap-2" onClick={goBack}>
-            <ArrowLeft className="h-4 w-4" />
-            Atrás
-          </button>
-          {step !== "resumen" && (
-            <button type="button" className="ce-btn ce-btn-primary flex flex-1 items-center justify-center gap-2" disabled={!canAdvance} onClick={goNext}>
-              Siguiente
-              <ArrowRight className="h-4 w-4" />
+        <div className="sticky bottom-0 z-10 border-t border-[var(--ce-border)] bg-[var(--ce-bg)]/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          <div className="flex gap-2">
+            <button type="button" className="ce-btn ce-btn-secondary flex flex-1 items-center justify-center gap-2" onClick={goBack}>
+              <ArrowLeft className="h-4 w-4" />
+              Atrás
             </button>
-          )}
+            {step !== "resumen" && (
+              <button type="button" className="ce-btn ce-btn-primary flex flex-[2] items-center justify-center gap-2" disabled={!canAdvance} onClick={goNext}>
+                Siguiente
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+            {step === "resumen" && (
+              <button
+                type="button"
+                className="ce-btn ce-btn-primary flex flex-[2] items-center justify-center gap-2"
+                onClick={() => {
+                  setStep("lista");
+                  refreshDrafts();
+                }}
+              >
+                Terminar
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
