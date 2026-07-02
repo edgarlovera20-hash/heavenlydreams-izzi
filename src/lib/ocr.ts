@@ -1,10 +1,42 @@
-import { createWorker } from "tesseract.js";
+import type { createWorker as CreateWorkerFn, Worker } from "tesseract.js";
 
-let workerPromise: ReturnType<typeof createWorker> | null = null;
+// El core y el worker de tesseract.js se sirven desde nuestro propio origen
+// (copiados a public/tesseract-core/ en build time) para no depender de un
+// CDN externo en campo, donde la señal del vendedor puede ser inestable.
+// Los datos de idioma (spa/eng .traineddata) sí se descargan de la CDN por
+// default de tesseract.js la primera vez que se usa cada idioma; el service
+// worker los deja en caché para los siguientes usos offline.
+const CORE_PATH = "/tesseract-core/tesseract-core-lstm.wasm.js";
+const WORKER_PATH = "/tesseract-core/worker.min.js";
+
+const OCR_IDLE_TIMEOUT_MS = 2 * 60 * 1000;
+
+let workerPromise: Promise<Worker> | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearIdleTimer() {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+}
+
+function scheduleIdleTermination() {
+  clearIdleTimer();
+  idleTimer = setTimeout(() => {
+    terminateOcrWorker().catch(() => {});
+  }, OCR_IDLE_TIMEOUT_MS);
+}
 
 async function getWorker() {
   if (!workerPromise) {
-    workerPromise = createWorker(["spa", "eng"]);
+    workerPromise = (async () => {
+      const { createWorker } = (await import("tesseract.js")) as { createWorker: typeof CreateWorkerFn };
+      return createWorker(["spa", "eng"], undefined, {
+        corePath: CORE_PATH,
+        workerPath: WORKER_PATH,
+      });
+    })();
   }
   return workerPromise;
 }
@@ -53,15 +85,31 @@ export async function preprocessImageFile(file: File, maxSide = 1600): Promise<B
 }
 
 export async function runOcr(file: File): Promise<string> {
-  const processed = await preprocessImageFile(file);
-  const worker = await getWorker();
-  const { data } = await worker.recognize(processed);
-  return data.text || "";
+  clearIdleTimer();
+  try {
+    const processed = await preprocessImageFile(file);
+    const worker = await getWorker();
+    const { data } = await worker.recognize(processed);
+    return data.text || "";
+  } catch (err) {
+    // Un fallo de OCR no debe tumbar el flujo de captura: el usuario siempre
+    // puede llenar los campos a mano.
+    console.error("[ocr] runOcr fallo, se continua con captura manual", err);
+    return "";
+  } finally {
+    scheduleIdleTermination();
+  }
 }
 
 export async function terminateOcrWorker() {
+  clearIdleTimer();
   if (!workerPromise) return;
-  const worker = await workerPromise;
-  await worker.terminate();
+  const pending = workerPromise;
   workerPromise = null;
+  try {
+    const worker = await pending;
+    await worker.terminate();
+  } catch {
+    // ya se habia liberado o nunca termino de inicializar; no hay nada que hacer.
+  }
 }
