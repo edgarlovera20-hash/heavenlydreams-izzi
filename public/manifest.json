@@ -1,0 +1,14 @@
+{
+  "name": "Captura Express",
+  "short_name": "Captura Express",
+  "description": "Sube identificaciones, autorellena datos del cliente y genera el texto de su paquete izzi.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

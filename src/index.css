@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.ce-input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.ce-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.ce-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.ce-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.6);
+  padding: 1rem;
+}
+
+.ce-btn {
+  border-radius: 0.75rem;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ce-btn-primary {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.ce-btn-secondary {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #e2e8f0;
+}
