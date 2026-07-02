@@ -30,6 +30,7 @@ export type ClientDraft = {
   fuenteCoordenadas: "gps" | "maps_link" | "";
   planSeleccionadoId: string;
   addonsSeleccionados: string[];
+  identificacionSeleccionada: string;
   documentos: CapturedDocument[];
   mensajeGenerado: string;
   createdAt: string;
@@ -66,6 +67,7 @@ export function emptyDraft(): ClientDraft {
     fuenteCoordenadas: "",
     planSeleccionadoId: "",
     addonsSeleccionados: [],
+    identificacionSeleccionada: "",
     documentos: [],
     mensajeGenerado: "",
     createdAt: now,

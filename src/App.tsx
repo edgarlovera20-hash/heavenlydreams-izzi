@@ -146,7 +146,13 @@ export default function App() {
         {step === "lista" && <CapturesList drafts={drafts} onOpen={openCapture} onDelete={removeCapture} onNew={startNewCapture} />}
 
         {step === "documentos" && draft && (
-          <DocumentCapture documentos={draft.documentos} onDocumentCaptured={handleDocumentCaptured} onFieldsExtracted={handleFieldsExtracted} />
+          <DocumentCapture
+            documentos={draft.documentos}
+            identificacionSeleccionada={draft.identificacionSeleccionada}
+            onIdentificacionChange={(identificacionSeleccionada) => patchDraft({ identificacionSeleccionada })}
+            onDocumentCaptured={handleDocumentCaptured}
+            onFieldsExtracted={handleFieldsExtracted}
+          />
         )}
 
         {step === "cliente" && draft && <ClientForm draft={draft} onChange={patchDraft} />}
