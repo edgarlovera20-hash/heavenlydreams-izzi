@@ -1,31 +1,39 @@
-import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Settings, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CapturesList } from "./components/CapturesList";
+import { CatalogEditor } from "./components/CatalogEditor";
 import { ClientForm } from "./components/ClientForm";
 import { DocumentCapture } from "./components/DocumentCapture";
 import { PackageSelector } from "./components/PackageSelector";
 import { SummaryScreen } from "./components/SummaryScreen";
 import { WizardSteps } from "./components/WizardSteps";
-import { CARGO_INSTALACION_TV, IzziLinea, PLANES_TV, planesPorLinea } from "./data/izziCatalog";
+import { IzziLinea } from "./data/izziCatalog";
+import { useCatalog } from "./hooks/useCatalog";
 import type { ParsedIdFields } from "./lib/idParsers";
 import { buildClientMessage } from "./lib/messageTemplate";
 import { CapturedDocument, ClientDraft, deleteDraft, emptyDraft, listDrafts, loadDraft, saveDraft } from "./storage/db";
 
-type Step = "lista" | "documentos" | "cliente" | "paquete" | "resumen";
+type Step = "lista" | "documentos" | "cliente" | "paquete" | "resumen" | "catalogo";
+type WizardStep = "documentos" | "cliente" | "paquete" | "resumen";
 
-const WIZARD_STEPS: Exclude<Step, "lista">[] = ["documentos", "cliente", "paquete", "resumen"];
-const STEP_LABELS: Record<Exclude<Step, "lista">, string> = {
+const WIZARD_STEPS: WizardStep[] = ["documentos", "cliente", "paquete", "resumen"];
+const STEP_LABELS: Record<WizardStep, string> = {
   documentos: "Documentos",
   cliente: "Cliente",
   paquete: "Paquete",
   resumen: "Resumen",
 };
 
+function isWizardStep(step: Step): step is WizardStep {
+  return (WIZARD_STEPS as Step[]).includes(step);
+}
+
 export default function App() {
   const [step, setStep] = useState<Step>("lista");
   const [drafts, setDrafts] = useState<ClientDraft[]>([]);
   const [draft, setDraft] = useState<ClientDraft | null>(null);
   const [linea, setLinea] = useState<IzziLinea>("wizz");
+  const catalog = useCatalog();
 
   useEffect(() => {
     refreshDrafts();
@@ -96,7 +104,9 @@ export default function App() {
   }
 
   function goBack() {
-    if (step === "documentos") {
+    if (step === "catalogo") {
+      setStep("lista");
+    } else if (step === "documentos") {
       setStep("lista");
       refreshDrafts();
     } else if (step === "cliente") setStep("documentos");
@@ -109,9 +119,9 @@ export default function App() {
     if (step === "documentos") setStep("cliente");
     else if (step === "cliente") setStep("paquete");
     else if (step === "paquete") {
-      const plan = linea === "tv" ? PLANES_TV.find((p) => p.id === draft.planSeleccionadoId) : planesPorLinea(linea).find((p) => p.id === draft.planSeleccionadoId);
+      const plan = linea === "tv" ? catalog.planesTv.find((p) => p.id === draft.planSeleccionadoId) : catalog.getPlanesPorLinea(linea).find((p) => p.id === draft.planSeleccionadoId);
       if (!plan) return;
-      const cargoInstalacion = linea === "tv" ? CARGO_INSTALACION_TV : undefined;
+      const cargoInstalacion = linea === "tv" ? catalog.cargoInstalacionTv : undefined;
       const mensaje = buildClientMessage(draft, plan, draft.addonsSeleccionados, cargoInstalacion);
       const next = { ...draft, mensajeGenerado: mensaje };
       setDraft(next);
@@ -121,7 +131,7 @@ export default function App() {
   }
 
   const canAdvance = step === "documentos" || step === "cliente" || (step === "paquete" && Boolean(draft?.planSeleccionadoId));
-  const wizardIndex = step === "lista" ? -1 : WIZARD_STEPS.indexOf(step);
+  const wizardIndex = isWizardStep(step) ? WIZARD_STEPS.indexOf(step) : -1;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
@@ -130,12 +140,23 @@ export default function App() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ce-primary-soft)] text-[var(--ce-primary)]">
             <ShieldCheck className="h-5 w-5" />
           </span>
-          <div>
+          <div className="flex-1">
             <h1 className="ce-title leading-none">Captura Express</h1>
-            {step !== "lista" && <p className="ce-subtitle mt-0.5">Paso {wizardIndex + 1} de {WIZARD_STEPS.length}</p>}
+            {isWizardStep(step) && <p className="ce-subtitle mt-0.5">Paso {wizardIndex + 1} de {WIZARD_STEPS.length}</p>}
+            {step === "catalogo" && <p className="ce-subtitle mt-0.5">Paquetes y promociones</p>}
           </div>
+          {step === "lista" && (
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--ce-text-muted)] hover:bg-white/5"
+              onClick={() => setStep("catalogo")}
+              aria-label="Editar catálogo"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          )}
         </div>
-        {step !== "lista" && (
+        {isWizardStep(step) && (
           <div className="mt-3">
             <WizardSteps labels={WIZARD_STEPS.map((s) => STEP_LABELS[s])} currentIndex={wizardIndex} />
           </div>
@@ -144,6 +165,8 @@ export default function App() {
 
       <main className="flex-1 px-4 py-4 pb-28">
         {step === "lista" && <CapturesList drafts={drafts} onOpen={openCapture} onDelete={removeCapture} onNew={startNewCapture} />}
+
+        {step === "catalogo" && <CatalogEditor catalog={catalog} />}
 
         {step === "documentos" && draft && (
           <DocumentCapture
@@ -162,6 +185,7 @@ export default function App() {
             linea={linea}
             planId={draft.planSeleccionadoId}
             addonsSeleccionados={draft.addonsSeleccionados}
+            catalog={catalog}
             onLineaChange={setLinea}
             onPlanChange={(planSeleccionadoId) => patchDraft({ planSeleccionadoId })}
             onAddonsChange={(addonsSeleccionados) => patchDraft({ addonsSeleccionados })}
@@ -178,7 +202,7 @@ export default function App() {
               <ArrowLeft className="h-4 w-4" />
               Atrás
             </button>
-            {step !== "resumen" && (
+            {isWizardStep(step) && step !== "resumen" && (
               <button type="button" className="ce-btn ce-btn-primary flex flex-[2] items-center justify-center gap-2" disabled={!canAdvance} onClick={goNext}>
                 Siguiente
                 <ArrowRight className="h-4 w-4" />

@@ -1,14 +1,6 @@
 import { Check, Smartphone, Sparkles, Tv, Wifi } from "lucide-react";
-import {
-  CARGO_INSTALACION_TV,
-  IzziLinea,
-  NEGOCIOS_EXTRAS,
-  PLANES_IZZI_MOVIL,
-  PLANES_TV,
-  RESIDENCIAL_EXTRAS,
-  WIZZ_EXTRAS,
-  planesPorLinea,
-} from "../data/izziCatalog";
+import type { IzziLinea } from "../data/izziCatalog";
+import type { UseCatalogResult } from "../hooks/useCatalog";
 
 const LINEAS: { id: IzziLinea; label: string; icon: React.ReactNode }[] = [
   { id: "tv", label: "izzi tv+", icon: <Tv className="h-4 w-4" /> },
@@ -17,19 +9,20 @@ const LINEAS: { id: IzziLinea; label: string; icon: React.ReactNode }[] = [
   { id: "residencial", label: "Residencial", icon: <Wifi className="h-4 w-4" /> },
 ];
 
-function addonOptionsFor(linea: IzziLinea, planId: string): string[] {
+function addonOptionsFor(linea: IzziLinea, planId: string, catalog: UseCatalogResult): string[] {
   const options: string[] = [];
   if (linea === "wizz") {
-    options.push(`Pago anticipado: $${WIZZ_EXTRAS.pagoAnticipado} de descuento inicial`);
-    options.push(`Descuento por domiciliar pago: -$${WIZZ_EXTRAS.descuentoDomiciliar}/mes`);
-    options.push(`Descuento por portabilidad telefónica: -$${WIZZ_EXTRAS.descuentoPortabilidadTelefonica}/mes`);
-    options.push(WIZZ_EXTRAS.streamingPromo);
+    const extras = catalog.wizzExtras;
+    options.push(`Pago anticipado: $${extras.pagoAnticipado} de descuento inicial`);
+    options.push(`Descuento por domiciliar pago: -$${extras.descuentoDomiciliar}/mes`);
+    options.push(`Descuento por portabilidad telefónica: -$${extras.descuentoPortabilidadTelefonica}/mes`);
+    options.push(extras.streamingPromo);
     options.push(
-      `Extensión de TV: gratis los primeros ${WIZZ_EXTRAS.extensionTv.gratisPrimerosMeses} meses, luego $${WIZZ_EXTRAS.extensionTv.precioApartirCuartoMes}/mes (2da y 3ra extensión $${WIZZ_EXTRAS.extensionTv.segundaTerceraExtension}/mes c/u, ${WIZZ_EXTRAS.extensionTv.nota})`
+      `Extensión de TV: gratis los primeros ${extras.extensionTv.gratisPrimerosMeses} meses, luego $${extras.extensionTv.precioApartirCuartoMes}/mes (2da y 3ra extensión $${extras.extensionTv.segundaTerceraExtension}/mes c/u, ${extras.extensionTv.nota})`
     );
   }
   if (linea === "negocios" || linea === "residencial") {
-    const extras = linea === "negocios" ? NEGOCIOS_EXTRAS : RESIDENCIAL_EXTRAS;
+    const extras = linea === "negocios" ? catalog.negociosExtras : catalog.residencialExtras;
     options.push(`Pago anticipado: $${extras.pagoAnticipado.monto} — ${extras.pagoAnticipado.condiciones}`);
     options.push(`Descuento por automatizar pago: -$${extras.descuentoAutomatizarPago}/mes`);
     options.push(`Descuento por portabilidad telefónica: -$${extras.descuentoPortabilidadTelefonica}/mes`);
@@ -44,13 +37,14 @@ export function PackageSelector(props: {
   linea: IzziLinea;
   planId: string;
   addonsSeleccionados: string[];
+  catalog: UseCatalogResult;
   onLineaChange: (linea: IzziLinea) => void;
   onPlanChange: (planId: string) => void;
   onAddonsChange: (addons: string[]) => void;
 }) {
-  const { linea, planId, addonsSeleccionados } = props;
-  const planesInternet = linea === "tv" ? [] : planesPorLinea(linea);
-  const addonOptions = planId ? addonOptionsFor(linea, planId) : [];
+  const { linea, planId, addonsSeleccionados, catalog } = props;
+  const planesInternet = linea === "tv" ? [] : catalog.getPlanesPorLinea(linea);
+  const addonOptions = planId ? addonOptionsFor(linea, planId, catalog) : [];
 
   function toggleAddon(addon: string) {
     if (addonsSeleccionados.includes(addon)) {
@@ -95,7 +89,7 @@ export function PackageSelector(props: {
         <p className="ce-eyebrow px-1">Paquete</p>
         <div className="space-y-2">
           {linea === "tv"
-            ? PLANES_TV.map((plan) => {
+            ? catalog.planesTv.map((plan) => {
                 const active = planId === plan.id;
                 return (
                   <button
@@ -201,7 +195,7 @@ export function PackageSelector(props: {
             </span>
             <p className="ce-eyebrow">izzi móvil (opcional)</p>
           </div>
-          {PLANES_IZZI_MOVIL.map((movil) => {
+          {catalog.planesMovil.map((movil) => {
             const label = `izzi móvil ${movil.nombre}: ${movil.precioConServicioFijo}/mes con servicio fijo${movil.promoEspecial ? ` (${movil.promoEspecial})` : ""}`;
             const checked = addonsSeleccionados.includes(label);
             return (
@@ -221,7 +215,7 @@ export function PackageSelector(props: {
       )}
 
       {linea === "tv" && planId && (
-        <p className="px-1 text-xs text-[var(--ce-text-faint)]">Cargo por instalación con técnico: ${CARGO_INSTALACION_TV} (pago único)</p>
+        <p className="px-1 text-xs text-[var(--ce-text-faint)]">Cargo por instalación con técnico: ${catalog.cargoInstalacionTv} (pago único)</p>
       )}
     </div>
   );
